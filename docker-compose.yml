@@ -1,27 +1,14 @@
 version: "3.8"
 
 services:
-  python-fastapi:
-    build:
-      context: ./services/python-fastapi
-      dockerfile: Dockerfile
-    container_name: python-fastapi
-    ports:
-      - "8000:8000"
-    depends_on:
-      - go-gin
-      - rust-actix
-    networks:
-      - app-network
-    restart: unless-stopped
-
   go-gin:
     build:
       context: ./services/go-gin
       dockerfile: Dockerfile
     container_name: go-gin
-    networks:
-      - app-network
+    network_mode: host
+    environment:
+      - GIN_MODE=release
     restart: unless-stopped
 
   rust-actix:
@@ -29,10 +16,16 @@ services:
       context: ./services/rust-actix
       dockerfile: Dockerfile
     container_name: rust-actix
-    networks:
-      - app-network
+    network_mode: host
     restart: unless-stopped
 
-networks:
-  app-network:
-    driver: bridge
+  python-fastapi:
+    build:
+      context: ./services/python-fastapi
+      dockerfile: Dockerfile
+    container_name: python-fastapi
+    network_mode: host
+    depends_on:
+      - go-gin
+      - rust-actix
+    restart: unless-stopped

@@ -1,5 +1,5 @@
 # Этап 1: Сборка
-FROM rust:1.75-slim AS builder
+FROM rust:1.88-slim AS builder
 
 WORKDIR /app
 
@@ -19,6 +19,6 @@ RUN apt-get update && \
 
 COPY --from=builder /app/target/release/rust-actix .
 
-EXPOSE 8080
+EXPOSE 8082
 
 CMD ["./rust-actix"]
