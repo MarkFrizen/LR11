@@ -1,27 +1,37 @@
-# Этап 1: Установка зависимостей (билдер)
-FROM python:3.12-slim AS builder
+# Этап 1: Компиляция Rust-крейта
+FROM rust:1.88-slim AS rust-builder
+WORKDIR /app/rust_extension
+COPY rust_extension/Cargo.toml ./
+COPY rust_extension/src ./src
+RUN cargo build --release
 
-WORKDIR /app
+# Этап 2: Сборка Python-колеса через maturin
+FROM python:3.12-slim AS wheel-builder
+WORKDIR /app/rust_extension
 
-# Build-зависимости для компиляции C-расширений (не попадут в финальный образ)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir maturin
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY rust_extension/Cargo.toml ./
+COPY rust_extension/src ./src
+COPY rust_extension/pyproject.toml ./
+# Копируем скомпилированные артефакты из rust-builder (кэш крейтов)
+COPY --from=rust-builder /app/rust_extension/target ./target
 
-# Этап 2: Минимальный runtime (без gcc и build-зависимостей)
+RUN maturin build --release --out dist --manylinux off
+
+# Этап 3: Минимальный runtime
 FROM python:3.12-slim AS runtime
-
 WORKDIR /app
 
-# Копируем установленные пакеты из билдера
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Копируем только готовое колесо и устанавливаем
+COPY --from=wheel-builder /app/rust_extension/dist ./dist
+RUN pip install --no-cache-dir dist/*.whl
 
-# Копируем код приложения
-COPY . .
+# Копируем Python-приложение
+COPY python_app/main.py .
 
 EXPOSE 8000
 
