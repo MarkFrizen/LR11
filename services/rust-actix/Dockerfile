@@ -3,9 +3,13 @@ FROM rust:1.88-slim AS builder
 
 WORKDIR /app
 
+# Копируем Cargo.toml и скачиваем зависимости (кэшируется при неизменных зависимостях)
 COPY Cargo.toml ./
-COPY src ./src
+RUN cargo fetch
+# cargo fetch скачивает зависимости без компиляции — слой не инвалидируется при изменении кода
 
+# Копируем код и собираем (пересобирается только при изменении src)
+COPY src ./src
 RUN cargo build --release
 
 # Этап 2: Минимальный образ
