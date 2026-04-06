@@ -1,5 +1,3 @@
-version: "3.8"
-
 volumes:
   shared_data:
 
@@ -7,6 +5,7 @@ services:
   init-shared-data:
     image: alpine
     container_name: init-shared-data
+    network_mode: host
     volumes:
       - shared_data:/data
     command: ["sh", "-c", "touch /data/log.txt && chmod 666 /data/log.txt"]
@@ -25,11 +24,9 @@ services:
     depends_on:
       init-shared-data:
         condition: service_completed_successfully
-    deploy:
-      resources:
-        limits:
-          cpus: "0.3"
-          memory: 128M
+    cpus: 0.3
+    mem_limit: 128m
+    mem_reservation: 64m
     restart: unless-stopped
 
   rust-actix:
@@ -43,11 +40,9 @@ services:
     depends_on:
       init-shared-data:
         condition: service_completed_successfully
-    deploy:
-      resources:
-        limits:
-          cpus: "0.2"
-          memory: 64M
+    cpus: 0.3
+    mem_limit: 64m
+    mem_reservation: 64m
     restart: unless-stopped
 
   python-fastapi:
@@ -59,9 +54,7 @@ services:
     depends_on:
       init-shared-data:
         condition: service_completed_successfully
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 256M
+    cpus: 0.5
+    mem_limit: 256m
+    mem_reservation: 64m
     restart: unless-stopped
