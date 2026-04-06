@@ -1,6 +1,17 @@
 version: "3.8"
 
+volumes:
+  shared_data:
+
 services:
+  init-shared-data:
+    image: alpine
+    container_name: init-shared-data
+    volumes:
+      - shared_data:/data
+    command: ["sh", "-c", "touch /data/log.txt && chmod 666 /data/log.txt"]
+    restart: "no"
+
   go-gin:
     build:
       context: ./services/go-gin
@@ -9,6 +20,16 @@ services:
     network_mode: host
     environment:
       - GIN_MODE=release
+    volumes:
+      - shared_data:/data
+    depends_on:
+      init-shared-data:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: 128M
     restart: unless-stopped
 
   rust-actix:
@@ -17,6 +38,16 @@ services:
       dockerfile: Dockerfile
     container_name: rust-actix
     network_mode: host
+    volumes:
+      - shared_data:/data
+    depends_on:
+      init-shared-data:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: 64M
     restart: unless-stopped
 
   python-fastapi:
@@ -26,6 +57,11 @@ services:
     container_name: python-fastapi
     network_mode: host
     depends_on:
-      - go-gin
-      - rust-actix
+      init-shared-data:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
     restart: unless-stopped
