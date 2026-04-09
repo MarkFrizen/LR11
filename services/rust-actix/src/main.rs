@@ -8,10 +8,27 @@ use std::os::unix::io::AsRawFd;
 
 const LOG_FILE: &str = "/data/log.txt";
 
+fn format_log_line(hostname: &str, timestamp: &str) -> String {
+    format!("[{}] {}\n", hostname, timestamp)
+}
+
+fn create_root_response() -> HttpResponse {
+    HttpResponse::Ok().json(json!({
+        "service": "rust-actix",
+        "status": "running"
+    }))
+}
+
+fn create_health_response() -> HttpResponse {
+    HttpResponse::Ok().json(json!({
+        "status": "healthy"
+    }))
+}
+
 async fn write_time() -> HttpResponse {
     let now = Utc::now().to_rfc3339();
     let hostname = std::env::var("HOSTNAME").unwrap_or_else(|_| "unknown".to_string());
-    let line = format!("[{}] {}\n", hostname, now);
+    let line = format_log_line(&hostname, &now);
 
     match OpenOptions::new()
         .create(true)
@@ -59,16 +76,11 @@ async fn read_log() -> HttpResponse {
 }
 
 async fn root() -> HttpResponse {
-    HttpResponse::Ok().json(json!({
-        "service": "rust-actix",
-        "status": "running"
-    }))
+    create_root_response()
 }
 
 async fn health() -> HttpResponse {
-    HttpResponse::Ok().json(json!({
-        "status": "healthy"
-    }))
+    create_health_response()
 }
 
 #[actix_web::main]
@@ -84,4 +96,55 @@ async fn main() -> std::io::Result<()> {
     .bind("0.0.0.0:8082")?
     .run()
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::body::MessageBody;
+    use serde_json::Value;
+
+    #[test]
+    fn test_format_log_line() {
+        let result = format_log_line("test-host", "2026-04-09T12:00:00+00:00");
+        let expected = "[test-host] 2026-04-09T12:00:00+00:00\n";
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_format_log_line_empty_hostname() {
+        let result = format_log_line("", "2026-04-09T12:00:00+00:00");
+        let expected = "[] 2026-04-09T12:00:00+00:00\n";
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_format_log_line_with_special_chars() {
+        let result = format_log_line("host:8080", "time");
+        let expected = "[host:8080] time\n";
+        assert_eq!(result, expected);
+    }
+
+    #[actix_web::test]
+    async fn test_root_response() {
+        let resp = create_root_response();
+        assert!(resp.status().is_success());
+
+        let body = resp.into_body().try_into_bytes().unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["service"], "rust-actix");
+        assert_eq!(json["status"], "running");
+    }
+
+    #[actix_web::test]
+    async fn test_health_response() {
+        let resp = create_health_response();
+        assert!(resp.status().is_success());
+
+        let body = resp.into_body().try_into_bytes().unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["status"], "healthy");
+    }
 }
