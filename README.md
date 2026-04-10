@@ -13,7 +13,7 @@
 
 # LR11
 
-## Запуск проектов
+## Запуск сервисов
 
 ### Все сервисы через Docker Compose
 ```bash
@@ -48,24 +48,34 @@ LR11/
 ├── PROMPT_LOG.md               # Логи промптов для Qwen Code
 ├── README.md                   # Этот файл
 └── services/
-    ├── go-gin/                 # Go сервис на Gin
-    │   ├── main.go
-    │   ├── handlers.go
-    │   ├── handlers_test.go    # Тесты
+    ├── go-gin/                 # Go сервис на Gin (порт 8080)
+    │   ├── main.go             # Точка входа, маршрутизация
+    │   ├── handlers.go         # HTTP обработчики, Handler struct
+    │   ├── handlers_test.go    # Тесты (unit + mock)
+    │   ├── storage.go          # Интерфейсы LogStorage, TimeFormatter
+    │   ├── file_storage.go     # FileLogStorage реализация
     │   ├── go.mod
+    │   ├── go.sum
     │   └── Dockerfile
-    ├── python-fastapi/         # Python сервис на FastAPI
+    ├── python-fastapi/         # Python сервис на FastAPI (порт 8000)
     │   ├── python_app/
-    │   │   └── main.py
+    │   │   ├── main.py         # Точка входа, lifespan, DI
+    │   │   ├── routes.py       # Роуты через create_routes()
+    │   │   ├── storage.py      # Абстрактный класс LogStorage
+    │   │   └── file_storage.py # FileLogStorage реализация
     │   ├── rust_extension/     # Rust-расширение (pyo3 + maturin)
     │   │   ├── Cargo.toml
     │   │   ├── pyproject.toml
     │   │   └── src/lib.rs
-    │   ├── test_main.py        # Тесты
+    │   ├── test_main.py        # Тесты (unit + mock)
     │   ├── requirements-test.txt
     │   └── Dockerfile
-    └── rust-actix/             # Rust сервис на Actix-web
-        ├── src/main.rs         # Включает тесты
+    └── rust-actix/             # Rust сервис на Actix-web (порт 8082)
+        ├── src/
+        │   ├── main.rs         # Точка входа, AppState, маршруты
+        │   ├── storage.rs      # Трейт LogStorage
+        │   ├── file_storage.rs # FileLogStorage реализация
+        │   └── storage_test.rs # Тесты (unit + mock)
         ├── Cargo.toml
         └── Dockerfile
 ```
