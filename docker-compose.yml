@@ -51,6 +51,10 @@ services:
       dockerfile: Dockerfile
     container_name: python-fastapi
     network_mode: host
+    environment:
+      - LOG_FILE=/data/log.txt
+    volumes:
+      - shared_data:/data
     depends_on:
       init-shared-data:
         condition: service_completed_successfully
