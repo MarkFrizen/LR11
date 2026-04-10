@@ -7,11 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func writeTime(c *gin.Context) {
-	now := formatTime(time.Now())
-	line := formatLogLine(c.Request.Host, now)
+// WriteTime обрабатывает GET /write
+func (h *Handler) WriteTime(c *gin.Context) {
+	now := h.timeSource.Now().Format(time.RFC3339)
+	line := h.formatter.FormatLogLine(c.Request.Host, now)
 
-	if err := writeToFile(logFile, line); err != nil {
+	if err := h.storage.WriteLine(line); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -19,8 +20,9 @@ func writeTime(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "time written", "time": now})
 }
 
-func readLog(c *gin.Context) {
-	content, err := readFromFile(logFile)
+// ReadLog обрабатывает GET /read
+func (h *Handler) ReadLog(c *gin.Context) {
+	content, err := h.storage.ReadAll()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -30,6 +32,12 @@ func readLog(c *gin.Context) {
 }
 
 func main() {
+	// Инициализация зависимостей (Dependency Injection)
+	storage := NewFileLogStorage("/data/log.txt")
+	formatter := &DefaultLogFormatter{}
+	timeSource := &RealTimeSource{}
+	handler := NewHandler(storage, formatter, timeSource)
+
 	r := gin.Default()
 
 	r.GET("/", func(c *gin.Context) {
@@ -45,8 +53,8 @@ func main() {
 		})
 	})
 
-	r.GET("/write", writeTime)
-	r.GET("/read", readLog)
+	r.GET("/write", handler.WriteTime)
+	r.GET("/read", handler.ReadLog)
 
 	r.Run(":8080")
 }
